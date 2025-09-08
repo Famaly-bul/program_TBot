@@ -1,9 +1,13 @@
 import random
+
 HELP = """
 help - Напечатать справку по программе.
 add - Добавить задачу в список (название задачи запрашиваем у пользователя).
-show - Напечатать все добавленные задачи.
-random - добавляет случайную задачу на дату Сегодня"""
+show - Напечатать все добавленные задачи на выбранную дату.
+showall - Напечатать все задачи по всем датам.
+random - Добавляет случайную задачу на дату 'Сегодня'.
+exit - Выйти из программы.
+"""
 
 RANDOM_TASKS = [
     "Парк Горького",
@@ -62,39 +66,56 @@ tasks = {
 
 }
 
-run = True
-#ФУНКЦИЯ
 def add_todo(date, task):
-    if date in tasks:
-        # Дата есть в словаре
-        # Добавляем в список задачу
-        tasks[date].append(task)
-    else:
-        # Даты в словаре нет
-        # Создаем запись с ключем date
-        tasks[date] = []
-        tasks[date].append(task)
-    print("Задача" , task, "добавлена на дату." , date)
+    """Добавляет задачу на указанную дату."""
+    tasks.setdefault(date, []).append(task)
+    print(f"Задача '{task}' добавлена на дату {date}.")
 
-while run:
-    command = input("Введите команду:")
-    if command == "help":
-        print (HELP)
-    elif command == "show":
-        date =input("Введите дату для отображения списка задач:")
-        if date in tasks:
-            for task in tasks [date]:
-                print ('-', task)
+def show_tasks(date):
+    """Показывает задачи на выбранную дату."""
+    if date in tasks:
+        if tasks[date]:
+            for task in tasks[date]:
+                print('-', task)
         else:
-            print ("Такой даты нет")
-    elif command == "add":
-        date = input("Введите дату для добавления задачи:")
-        task = input ("Введите название задачи:")
-        add_todo(date, task)
-    elif command == "random":
-        task = random.choice(RANDOM_TASKS)
-        add_todo("Сегодня", task)
+            print("На эту дату задач нет.")
     else:
-        print("Неизвестная команда!")
-        break
-print("До свидания!")
+        print("Такой даты нет.")
+
+def show_all_tasks():
+    """Показывает все задачи по всем датам."""
+    if not tasks:
+        print("Список задач пуст.")
+        return
+    for date, task_list in tasks.items():
+        print(f"{date}:")
+        for task in task_list:
+            print('  -', task)
+
+def add_random_task():
+    """Добавляет случайную задачу на выбранную дату."""
+    date = input("Введите дату для добавления случайного места: ")
+    task = random.choice(RANDOM_TASKS)
+    add_todo(date, task)
+
+def main():
+    while True:
+        command = input("Введите команду: ").strip().lower()
+        if command == "help":
+            print(HELP)
+        elif command == "show":
+            date = input("Введите дату для отображения списка задач: ")
+            show_tasks(date)
+        elif command == "showall":
+            show_all_tasks()
+        elif command == "add":
+            date = input("Введите дату для добавления задачи: ")
+            task = input("Введите название задачи: ")
+            add_todo(date, task)
+        elif command == "random":
+            add_random_task()
+        elif command == "exit":
+            print("До свидания!")
+            break
+        else:
+            print("Неизвестная команда! Введите 'help' для справки.")
