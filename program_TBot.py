@@ -1,8 +1,12 @@
 import telebot
 import random
 import os
+import json
+import re
 
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+if not TOKEN:
+    raise ValueError("Токен Telegram-бота не найден! Установите переменную окружения TELEGRAM_BOT_TOKEN.")
 bot = telebot.TeleBot(TOKEN)
 
 HELP = (
@@ -29,7 +33,26 @@ RANDOM_TASKS = [
     "Парк Сказка (Подмосковье)", "Парк Кусково", "Парк Раменки", "Парк Тушино"
 ]
 
+TASKS_FILE = "tasks.json"
+
+def save_tasks():
+    with open(TASKS_FILE, "w", encoding="utf-8") as f:
+        json.dump(tasks, f, ensure_ascii=False)
+
+def load_tasks():
+    global tasks
+    try:
+        with open(TASKS_FILE, "r", encoding="utf-8") as f:
+            tasks = json.load(f)
+    except FileNotFoundError:
+        tasks = {}
+
+load_tasks()
+
 tasks = {}
+
+def is_valid_date(date):
+    return re.match(r"\d{2}\.\d{2}(\.\d{4})?$", date) is not None
 
 @bot.message_handler(commands=["help"])
 def send_help(message):
@@ -43,8 +66,12 @@ def add_task(message):
         return
     date = parts[1].strip()
     task = parts[2].strip()
+    if not is_valid_date(date):
+        bot.send_message(message.chat.id, "Дата должна быть в формате ДД.ММ или ДД.ММ.ГГГГ")
+        return
     tasks.setdefault(date, []).append(task)
     bot.send_message(message.chat.id, f"Задача '{task}' добавлена на дату {date}.")
+    save_tasks()
 
 @bot.message_handler(commands=["show"])
 def show_tasks(message):
@@ -53,6 +80,9 @@ def show_tasks(message):
         bot.send_message(message.chat.id, "Используйте: /show <дата>")
         return
     date = parts[1].strip()
+    if not is_valid_date(date):
+        bot.send_message(message.chat.id, "Дата должна быть в формате ДД.ММ или ДД.ММ.ГГГГ")
+        return
     if date in tasks and tasks[date]:
         text = f"{date.upper()}:\n"
         for task in tasks[date]:
@@ -80,8 +110,34 @@ def add_random_task(message):
         bot.send_message(message.chat.id, "Используйте: /random <дата>")
         return
     date = parts[1].strip()
+    if not is_valid_date(date):
+        bot.send_message(message.chat.id, "Дата должна быть в формате ДД.ММ или ДД.ММ.ГГГГ")
+        return
     task = random.choice(RANDOM_TASKS)
     tasks.setdefault(date, []).append(task)
     bot.send_message(message.chat.id, f"Случайное место '{task}' добавлено на дату {date}.")
+    save_tasks()
+
+@bot.message_handler(commands=["delete"])
+def delete_task(message):
+    parts = message.text.split(maxsplit=2)
+    if len(parts) < 3:
+        bot.send_message(message.chat.id, "Используйте: /delete <дата> <номер_задачи>")
+        return
+    date = parts[1].strip()
+    try:
+        idx = int(parts[2].strip()) - 1
+        if date in tasks and 0 <= idx < len(tasks[date]):
+            removed = tasks[date].pop(idx)
+            save_tasks()
+            bot.send_message(message.chat.id, f"Задача '{removed}' удалена с даты {date}.")
+        else:
+            bot.send_message(message.chat.id, "Неверная дата или номер задачи.")
+    except ValueError:
+        bot.send_message(message.chat.id, "Номер задачи должен быть числом.")
+
+@bot.message_handler(commands=["start"])
+def start_message(message):
+    bot.send_message(message.chat.id, "Привет! Я бот-планировщик. Введите /help для списка команд.")
 
 bot.polling(none_stop=True)
