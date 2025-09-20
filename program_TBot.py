@@ -5,7 +5,7 @@ import json
 import re
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv()  # Загружает переменные окружения из файла .env
 
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 if not TOKEN:
